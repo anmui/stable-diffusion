@@ -12,6 +12,7 @@ from omegaconf import OmegaConf
 from PIL import Image
 from torch import autocast
 from torchvision import transforms
+from pytorch_lightning.utilities.rank_zero import rank_zero_only
 
 
 from scripts.image_variations import load_model_from_config

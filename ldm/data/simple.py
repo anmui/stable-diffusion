@@ -13,6 +13,13 @@ from datasets import load_dataset
 import copy
 import csv
 import cv2
+import os
+import albumentations
+import numpy as np
+import torch
+import torch.nn as nn
+from PIL import Image
+from torch.utils.data import Dataset, DataLoader
 
 # Some hacky things to make experimentation easier
 def make_transform_multi_folder_data(paths, caption_files=None, **kwargs):
@@ -293,6 +300,69 @@ def hf_dataset(
         return processed
 
     ds.set_transform(pre_process)
+    return ds
+
+class ImagePaths(Dataset):
+    def __init__(self, paths_s, size=None):
+        self.size = size
+        self.images =  [os.path.join(paths_s, file) for file in os.listdir(paths_s)]
+        # self.txt_tables = []
+        # f = open(paths_t, "r", encoding='utf-8')
+        # line = f.readline()  # 读取第一行
+        # while line:
+        #     txt_data = eval(line)  # 可将字符串变为元组
+        #     self.txt_tables.append(txt_data)  # 列表增加
+        #     line = f.readline()  # 读取下一行
+
+
+        self._length = len(self.images)
+
+        self.rescaler = albumentations.SmallestMaxSize(max_size=self.size)
+        self.cropper = albumentations.CenterCrop(height=self.size, width=self.size)
+        self.preprocessor = albumentations.Compose([self.rescaler, self.cropper])
+        self.images = self.images
+
+    def __len__(self):
+        #return 200
+        return self._length
+
+    def preprocess_image(self, image_path,i):
+        image = Image.open(image_path)
+        if not image.mode == "RGB":
+            image = image.convert("RGB")
+        image = np.array(image).astype(np.uint8)
+        image = self.preprocessor(image=image)["image"]
+        image = (image / 127.5 - 1.0).astype(np.float32)
+        image = image.transpose(2, 0, 1)
+        processed = {}
+        processed["image"] = image
+        processed["text"] = "Chinese painting"
+        return processed
+
+    def __getitem__(self, i):
+        example = self.preprocess_image(self.images[i],i)
+        return example
+def load_data(name):
+    train_data_s = ImagePaths(name, size=256)
+    train_loader_s = DataLoader(train_data_s, batch_size=1, shuffle=False)
+    return train_loader_s
+
+def my_dataset(
+    name,
+    image_transforms=[],
+    image_column="image",
+    text_column="text",
+    split='train',
+    image_key='image',
+    caption_key='txt',
+    path_s='',
+    path_t=''
+    ):
+    """Make huggingface dataset with appropriate list of transforms applied
+    """
+    #ds = load_dataset(name, split=split)
+    ds = ImagePaths(path_s,path_t, size=256)
+
     return ds
 
 class TextOnly(Dataset):
