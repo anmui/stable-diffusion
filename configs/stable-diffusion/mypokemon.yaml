@@ -78,7 +78,7 @@ data:
     train:
       target: ldm.data.simple.load_data
       params:
-        name: /home/zhang/PycharmProjects/zhangdaqian
+        name: /kaggle/input/chinese-landscape-painting-dataset
     validation:
       target: ldm.data.simple.TextOnly
       params:
